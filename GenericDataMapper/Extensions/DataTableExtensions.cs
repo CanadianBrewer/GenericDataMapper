@@ -23,6 +23,10 @@ public static class DataTableExtensions {
                 }
 
                 Type t = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                
+                // SQLite has a BOOLEAN type but it's really a wrapper over an integer.
+                // Without this, the value is "0" or "1" (yep, a string) and Convert.ChangeType blows up.
+                // Should see how SQL Server data types come back in future iterations.
                 if (t == typeof(bool)) {
                     value = Convert.ToInt32(value);
                 }

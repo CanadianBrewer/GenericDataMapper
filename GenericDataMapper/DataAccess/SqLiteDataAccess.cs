@@ -7,34 +7,31 @@ namespace GenericDataMapper.DataAccess;
 public class SqLiteDataAccess {
     public DataTable GetData(string query) {
         DataTable entries = new();
-        using var connnection = new SqliteConnection("Data Source=Database\\scratch.db");
-        SqliteCommand selectCommand =
-            new SqliteCommand(query, connnection);
+        using var connection = new SqliteConnection("Data Source=Database\\scratch.db");
+        var selectCommand = new SqliteCommand(query, connection);
         try {
-            connnection.Open();
+            connection.Open();
             SqliteDataReader reader = selectCommand.ExecuteReader();
 
             if (reader.HasRows)
-                for (int i = 0; i < reader.FieldCount; i++) {
+                for (var i = 0; i < reader.FieldCount; i++) {
                     entries.Columns.Add(new DataColumn(reader.GetName(i)));
                 }
 
-            int j = 0;
             while (reader.Read()) {
                 DataRow row = entries.NewRow();
-                for (int i = 0; i < reader.FieldCount; i++) {
+                for (var i = 0; i < reader.FieldCount; i++) {
                     row[i] = reader.GetValue(i);
                 }
 
                 entries.Rows.Add(row);
-                j++;
             }
 
-            connnection.Close();
+            connection.Close();
         }
         catch (SqliteException ex) {
             Console.WriteLine(ex);
-            connnection.Close();
+            connection.Close();
             throw;
         }
 
@@ -42,7 +39,7 @@ public class SqLiteDataAccess {
     }
 
     public void LoadData(int numberOfRows) {
-        using var connnection = new SqliteConnection("Data Source=Database\\scratch.db");
+        using var connection = new SqliteConnection("Data Source=Database\\scratch.db");
         for (int i = 1; i <= numberOfRows; i++) {
             string fn = GetRandomString();
             string ln = GetRandomString();
@@ -53,8 +50,8 @@ public class SqLiteDataAccess {
                 $"INSERT INTO Person (first_name, last_name, city, date_of_birth, is_employee) VALUES ('{fn}', '{ln}', '{c}'";
             sql = dob == null ? sql += ", NULL" : sql += $", '{dob}'";
             sql = isEmp == null ? sql += ", NULL);" : sql += $", {isEmp});";
-            SqliteCommand insertCommand = new SqliteCommand(sql, connnection);
-            connnection.Open();
+            SqliteCommand insertCommand = new SqliteCommand(sql, connection);
+            connection.Open();
             _ = insertCommand.ExecuteNonQuery();
 
             if (i % 1000 == 0) {
@@ -73,7 +70,7 @@ public class SqLiteDataAccess {
             var sql = $"INSERT INTO Company (corporate_name, ticker_symbol, current_stock_price, fiscal_year_end, board_member_1, board_member_2, board_member_3) VALUES ('{cn}', '{ts}', priceParam, yearEndParam, '{b1}', '{b2}', '{b3}')";
             sql = sp == null ? sql.Replace("priceParam", "NULL") : sql.Replace("priceParam", sp.ToString());
             sql = ye == null ? sql.Replace("yearEndParam", "NULL") : sql.Replace("yearEndParam", $"'{ye.ToString()}'");
-            SqliteCommand insertCommand = new SqliteCommand(sql, connnection);
+            SqliteCommand insertCommand = new SqliteCommand(sql, connection);
             _ = insertCommand.ExecuteNonQuery();
 
             if (i % 1000 == 0) {
@@ -81,9 +78,9 @@ public class SqLiteDataAccess {
             }
         }
 
-        SqliteCommand countCommand = new SqliteCommand("SELECT COUNT(*) FROM Person", connnection);
+        SqliteCommand countCommand = new SqliteCommand("SELECT COUNT(*) FROM Person", connection);
         Console.WriteLine($"person has {countCommand.ExecuteScalar()} rows");
-        countCommand = new SqliteCommand("SELECT COUNT(*) FROM Company", connnection);
+        countCommand = new SqliteCommand("SELECT COUNT(*) FROM Company", connection);
         Console.WriteLine($"company has {countCommand.ExecuteScalar()} rows");
     }
 
