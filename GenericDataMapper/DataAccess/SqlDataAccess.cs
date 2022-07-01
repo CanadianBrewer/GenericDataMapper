@@ -1,25 +1,28 @@
 ﻿using System.Data;
 using System.Text;
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 
 namespace GenericDataMapper.DataAccess;
 
-public class SqLiteDataAccess {
+public class SqlDataAccess {
+    private const string _connectionString = "Server=ROCINANTE;Database=sandbox;Trusted_Connection=True;Encrypt=False;";
+
     public DataTable GetData(string query) {
         DataTable entries = new();
-        using var connection = new SqliteConnection("Data Source=Database\\scratch.db");
-        var selectCommand = new SqliteCommand(query, connection);
+        using var connection = new SqlConnection(_connectionString);
+        var selectCommand = new SqlCommand(query, connection);
         try {
             connection.Open();
-            SqliteDataReader reader = selectCommand.ExecuteReader();
+            var reader = selectCommand.ExecuteReader();
 
-            if (reader.HasRows)
+            if (reader.HasRows) {
                 for (var i = 0; i < reader.FieldCount; i++) {
-                    entries.Columns.Add(new DataColumn(reader.GetName(i)));
+                    entries.Columns.Add(new DataColumn(reader.GetName(i), reader.GetFieldType(i)));
                 }
+            }
 
             while (reader.Read()) {
-                DataRow row = entries.NewRow();
+                var row = entries.NewRow();
                 for (var i = 0; i < reader.FieldCount; i++) {
                     row[i] = reader.GetValue(i);
                 }
@@ -29,7 +32,7 @@ public class SqLiteDataAccess {
 
             connection.Close();
         }
-        catch (SqliteException ex) {
+        catch (SqlException ex) {
             Console.WriteLine(ex);
             connection.Close();
             throw;
@@ -39,19 +42,20 @@ public class SqLiteDataAccess {
     }
 
     public void LoadData(int numberOfRows) {
-        using var connection = new SqliteConnection("Data Source=Database\\scratch.db");
-        for (int i = 1; i <= numberOfRows; i++) {
-            string fn = GetRandomString();
-            string ln = GetRandomString();
-            string c = GetRandomStringOrNull();
-            DateTime? dob = GetRandomDateOrNull();
-            bool? isEmp = GetRandomBooleanOrNull();
+        using var connection = new SqlConnection(_connectionString);
+        connection.Open();
+        for (var i = 1; i <= numberOfRows; i++) {
+            var fn = GetRandomString();
+            var ln = GetRandomString();
+            var c = GetRandomStringOrNull();
+            var dob = GetRandomDateOrNull();
+            var randomBool = GetRandomBooleanOrNull();
+            int? isEmployee = randomBool.HasValue ? randomBool.Value ? 1 : 0 : null;
             var sql =
                 $"INSERT INTO Person (first_name, last_name, city, date_of_birth, is_employee) VALUES ('{fn}', '{ln}', '{c}'";
             sql = dob == null ? sql += ", NULL" : sql += $", '{dob}'";
-            sql = isEmp == null ? sql += ", NULL);" : sql += $", {isEmp});";
-            SqliteCommand insertCommand = new SqliteCommand(sql, connection);
-            connection.Open();
+            sql = isEmployee == null ? sql += ", NULL);" : sql += $", {isEmployee});";
+            var insertCommand = new SqlCommand(sql, connection);
             _ = insertCommand.ExecuteNonQuery();
 
             if (i % 1000 == 0) {
@@ -59,45 +63,41 @@ public class SqLiteDataAccess {
             }
         }
 
-        for (int i = 1; i <= numberOfRows; i++) {
-            string cn = GetRandomString();
-            string ts = GetRandomString(4);
-            double? sp = GetRandomDoubleOrNull();
-            DateTime? ye = GetRandomDateOrNull();
-            string b1 = GetRandomStringOrNull();
-            string b2 = GetRandomStringOrNull();
-            string b3 = GetRandomStringOrNull();
-            var sql = $"INSERT INTO Company (corporate_name, ticker_symbol, current_stock_price, fiscal_year_end, board_member_1, board_member_2, board_member_3) VALUES ('{cn}', '{ts}', priceParam, yearEndParam, '{b1}', '{b2}', '{b3}')";
+        for (var i = 1; i <= numberOfRows; i++) {
+            var cn = GetRandomString();
+            var ts = GetRandomString(4);
+            var sp = GetRandomDoubleOrNull();
+            var ye = GetRandomDateOrNull();
+            var b1 = GetRandomStringOrNull();
+            var b2 = GetRandomStringOrNull();
+            var b3 = GetRandomStringOrNull();
+            var sql =
+                $"INSERT INTO Company (corporate_name, ticker_symbol, current_stock_price, fiscal_year_end, board_member_1, board_member_2, board_member_3) VALUES ('{cn}', '{ts}', priceParam, yearEndParam, '{b1}', '{b2}', '{b3}')";
             sql = sp == null ? sql.Replace("priceParam", "NULL") : sql.Replace("priceParam", sp.ToString());
             sql = ye == null ? sql.Replace("yearEndParam", "NULL") : sql.Replace("yearEndParam", $"'{ye.ToString()}'");
-            SqliteCommand insertCommand = new SqliteCommand(sql, connection);
+            var insertCommand = new SqlCommand(sql, connection);
             _ = insertCommand.ExecuteNonQuery();
 
             if (i % 1000 == 0) {
                 Console.WriteLine($"Company {i}");
             }
         }
-
-        SqliteCommand countCommand = new SqliteCommand("SELECT COUNT(*) FROM Person", connection);
-        Console.WriteLine($"person has {countCommand.ExecuteScalar()} rows");
-        countCommand = new SqliteCommand("SELECT COUNT(*) FROM Company", connection);
-        Console.WriteLine($"company has {countCommand.ExecuteScalar()} rows");
     }
 
     public void FlushData() {
-        using var connnection = new SqliteConnection("Data Source=Database\\scratch.db");
-        SqliteCommand deleteCommand = new SqliteCommand("DELETE FROM Company WHERE id > 5", connnection);
-        connnection.Open();
+        using var connection = new SqlConnection(_connectionString);
+        var deleteCommand = new SqlCommand("TRUNCATE TABLE Company", connection);
+        connection.Open();
         _ = deleteCommand.ExecuteNonQuery();
-        deleteCommand = new SqliteCommand("DELETE FROM Person WHERE id > 5", connnection);
+        deleteCommand = new SqlCommand("TRUNCATE TABLE Person", connection);
         _ = deleteCommand.ExecuteNonQuery();
-        connnection.Close();
+        connection.Close();
     }
 
     private string GetRandomString(int length = 15) {
         StringBuilder sb = new();
         Random r = new();
-        for (int i = 0; i < length; i++) {
+        for (var i = 0; i < length; i++) {
             sb.Append((char)r.Next(65, 90));
         }
 
@@ -111,7 +111,7 @@ public class SqLiteDataAccess {
             return null;
         }
 
-        for (int i = 0; i < 15; i++) {
+        for (var i = 0; i < 15; i++) {
             sb.Append((char)r.Next(65, 90));
         }
 
@@ -133,12 +133,12 @@ public class SqLiteDataAccess {
             return null;
         }
 
-        int year = r.Next(1900, 2000);
-        int month = r.Next(1, 12);
-        int day = r.Next(1, 28);
+        var year = r.Next(1900, 2000);
+        var month = r.Next(1, 12);
+        var day = r.Next(1, 28);
         return new DateTime(year, month, day);
     }
-    
+
     private bool? GetRandomBooleanOrNull() {
         Random r = new();
         if (r.Next(0, 100) > 75) {

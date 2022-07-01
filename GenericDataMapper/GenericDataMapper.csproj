@@ -8,17 +8,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Database" />
+        <Folder Include="Database"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.6" />
+        <None Update="Database\scratch.db">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="Database\scratch.db">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="4.1.0"/>
     </ItemGroup>
 
 </Project>

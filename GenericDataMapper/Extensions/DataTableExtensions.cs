@@ -1,38 +1,35 @@
 ﻿using System.ComponentModel;
-using System.Reflection;
 using System.Data;
 using GenericDataMapper.Models;
 
 namespace GenericDataMapper.Extensions;
 
 public static class DataTableExtensions {
-    public static List<T> ToList<T>(this DataTable source) where T : new() {
+    public static List<T> ToList<T>(this DataTable source) where T : PropertyAccessor, new() {
         List<T> result = new();
+
+        Dictionary<string, string> propertyFieldMappings = new();
+        // load these once - no need to get them on each iteration
+        foreach (var property in typeof(T).GetProperties()) {
+            var attribute =
+                property.GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() as
+                    DescriptionAttribute;
+            if (string.IsNullOrWhiteSpace(attribute?.Description)) {
+                continue;
+            }
+
+            propertyFieldMappings.Add(attribute.Description, property.Name);
+        }
+
         foreach (var row in source.Rows.Cast<DataRow>()) {
             var item = new T();
-            foreach (var property in typeof(T).GetProperties()) {
-                DescriptionAttribute attribute =
-                    property.GetCustomAttributes(typeof(DescriptionAttribute), false).First() as DescriptionAttribute;
-                if (string.IsNullOrWhiteSpace(attribute?.Description)) {
-                    continue;
-                }
-
-                object value = row[attribute.Description];
+            foreach (var kvp in propertyFieldMappings) {
+                var value = row[kvp.Key];
                 if (value == DBNull.Value) {
                     continue;
                 }
 
-                Type t = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-                
-                // SQLite has a BOOLEAN type but it's really a wrapper over an integer.
-                // Without this, the value is "0" or "1" (yep, a string) and Convert.ChangeType blows up.
-                // Should see how SQL Server data types come back in future iterations.
-                if (t == typeof(bool)) {
-                    value = Convert.ToInt32(value);
-                }
-
-                object safeValue = Convert.ChangeType(value, t);
-                property.SetValue(item, safeValue, null);
+                item[kvp.Value] = value;
             }
 
             result.Add(item);
@@ -40,6 +37,7 @@ public static class DataTableExtensions {
 
         return result;
     }
+
 
     public static List<Person> ToPersonList(this DataTable source) {
         List<Person> persons = new();
@@ -64,11 +62,11 @@ public static class DataTableExtensions {
                 Id = Convert.ToInt32(row["Id"]),
                 CompanyName = row["corporate_name"] as string,
                 TickerSymbol = row["ticker_symbol"] as string,
-                StockPrice = ToNullableDouble(row["current_stock_price"]),
+                StockPrice = ToNullableDecimal(row["current_stock_price"]),
                 YearEnd = ToNullableDateTime(row["fiscal_year_end"]),
                 BoardMember1 = row["board_member_1"] as string,
                 BoardMember2 = row["board_member_2"] as string,
-                BoardMember3 = row["board_member_3"] as string,
+                BoardMember3 = row["board_member_3"] as string
             });
         }
 
@@ -82,13 +80,12 @@ public static class DataTableExtensions {
     public static bool? ToNullableBool(object value) {
         if (value == DBNull.Value) {
             return null;
-            
         }
 
-        return value.ToString() == "1";
+        return Convert.ToBoolean(value);
     }
 
-    public static double? ToNullableDouble(object value) {
-        return value == DBNull.Value ? null : Convert.ToDouble(value);
+    public static decimal? ToNullableDecimal(object value) {
+        return value == DBNull.Value ? null : Convert.ToDecimal(value);
     }
 }

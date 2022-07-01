@@ -2,10 +2,9 @@
 
 namespace GenericDataMapper.Models;
 
-public class Company
-{
+public class Company : PropertyAccessor {
     [Description("id")]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
     [Description("corporate_name")]
     public string CompanyName { get; set; }
@@ -14,7 +13,7 @@ public class Company
     public string TickerSymbol { get; set; }
 
     [Description("current_stock_price")]
-    public double? StockPrice { get; set; }
+    public decimal? StockPrice { get; set; }
 
     [Description("fiscal_year_end")]
     public DateTime? YearEnd { get; set; }

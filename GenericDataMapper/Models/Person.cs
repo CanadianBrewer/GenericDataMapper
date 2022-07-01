@@ -2,10 +2,9 @@
 
 namespace GenericDataMapper.Models;
 
-public class Person
-{
+public class Person : PropertyAccessor {
     [Description("id")]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
     [Description("first_name")]
     public string FirstName { get; set; }
@@ -18,7 +17,7 @@ public class Person
 
     [Description("date_of_birth")]
     public DateTime? DateOfBirth { get; set; }
-    
+
     [Description("is_employee")]
     public bool? IsEmployee { get; set; }
 }
